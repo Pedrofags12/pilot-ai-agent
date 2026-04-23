@@ -14,6 +14,7 @@ import {
   History,
   LifeBuoy,
   Wallet,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
@@ -28,6 +29,7 @@ const navItems = [
   
   { href: "/admin/ia", icon: Bot, label: "Configuração da IA" },
   { href: "/admin/financeiro", icon: Wallet, label: "Financeiro" },
+  { href: "/admin/subcontas", icon: Building2, label: "Subconta Asaas" },
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
   { href: "/admin/historico", icon: History, label: "Histórico" },
   

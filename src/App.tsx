@@ -25,6 +25,7 @@ import Historico from "./pages/admin/Historico";
 import CancelarAssinatura from "./pages/admin/CancelarAssinatura";
 import Suporte from "./pages/admin/Suporte";
 import Financeiro from "./pages/admin/Financeiro";
+import Subcontas from "./pages/admin/Subcontas";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="clientes" element={<Clientes />} />
             <Route path="historico" element={<Historico />} />
             <Route path="financeiro" element={<Financeiro />} />
+            <Route path="subcontas" element={<Subcontas />} />
             <Route path="cancelar-assinatura" element={<CancelarAssinatura />} />
             <Route path="suporte" element={<Suporte />} />
             {/* Legacy routes redirect */}

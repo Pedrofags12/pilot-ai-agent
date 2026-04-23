@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    // 1. AUTH — chamado pelo n8n após processar webhook do Asaas
+    // 1. AUTH — dupla camada: n8n_key (obrigatório) + assinatura Asaas (quando configurada)
     const n8nKey      = req.headers.get("x-n8n-key") ?? "";
     const authHeader  = req.headers.get("authorization") ?? "";
     const expectedKey = Deno.env.get("n8n_key") ?? "";
@@ -37,10 +37,26 @@ serve(async (req) => {
       (token  && expectedKey && token  === expectedKey);
 
     if (!isAuthorized) {
+      // Log sem expor keys — apenas indica tentativa não autorizada
+      console.warn("asaas-webhook: tentativa não autorizada bloqueada");
       return new Response(
         JSON.stringify({ error: "Não autorizado." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Validação opcional da assinatura do Asaas (token configurado no painel Asaas)
+    // Ativa quando ASAAS_WEBHOOK_TOKEN estiver configurado nos secrets
+    const asaasWebhookToken = Deno.env.get("ASAAS_WEBHOOK_TOKEN");
+    if (asaasWebhookToken) {
+      const asaasSignature = req.headers.get("asaas-access-token") ?? "";
+      if (asaasSignature !== asaasWebhookToken) {
+        console.warn("asaas-webhook: assinatura Asaas inválida bloqueada");
+        return new Response(
+          JSON.stringify({ error: "Assinatura Asaas inválida." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     // 2. PARSE BODY

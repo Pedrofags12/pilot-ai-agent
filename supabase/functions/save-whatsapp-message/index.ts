@@ -9,6 +9,19 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // AUTH — apenas n8n autenticado pode ingerir mensagens do WhatsApp
+  const expectedKey = Deno.env.get("n8n_key") ?? "";
+  const incomingKey = req.headers.get("x-n8n-key")
+    ?? req.headers.get("authorization")?.replace("Bearer ", "")
+    ?? "";
+
+  if (!expectedKey || incomingKey !== expectedKey) {
+    return new Response(
+      JSON.stringify({ error: "Não autorizado." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   try {
     const { phone, message, direction, sender_name } = await req.json();
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

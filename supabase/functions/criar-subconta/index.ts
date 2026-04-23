@@ -9,6 +9,24 @@ const corsHeaders = {
 
 const N8N_GERAR_SUBCONTA = "https://webhook.agentepilot.com/webhook/gerar-subconta";
 
+/** Valida CPF (11 dígitos) ou CNPJ (14 dígitos) — apenas formato, não algoritmo */
+function validateCpfCnpj(value: string): { valid: boolean; type: "cpf" | "cnpj" | "invalid" } {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 11) return { valid: true, type: "cpf" };
+  if (digits.length === 14) return { valid: true, type: "cnpj" };
+  return { valid: false, type: "invalid" };
+}
+
+/** Remove caracteres potencialmente perigosos para evitar injeção em payloads externos */
+function sanitizeString(value: string, maxLength = 200): string {
+  return value.replace(/[<>"'%;()&+]/g, "").trim().slice(0, maxLength);
+}
+
+/** Validação básica de e-mail */
+function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -80,6 +98,34 @@ serve(async (req) => {
       );
     }
 
+    // Validação de e-mail
+    if (!validateEmail(email)) {
+      return new Response(
+        JSON.stringify({ error: "E-mail inválido." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Validação de CPF/CNPJ
+    const cpfCnpjValidation = validateCpfCnpj(cpfCnpj);
+    if (!cpfCnpjValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: "CPF deve ter 11 dígitos e CNPJ deve ter 14 dígitos." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Sanitiza todos os campos de texto antes de enviar ao n8n/Asaas
+    const safeName        = sanitizeString(name, 100);
+    const safeEmail       = email.trim().toLowerCase().slice(0, 254);
+    const safeCpfCnpj     = cpfCnpj.replace(/\D/g, ""); // apenas dígitos
+    const safePhone       = (phone ?? "").replace(/\D/g, "").slice(0, 20);
+    const safeMobile      = (mobilePhone ?? "").replace(/\D/g, "").slice(0, 20);
+    const safeAddress     = sanitizeString(address ?? "", 150);
+    const safeAddrNumber  = sanitizeString(addressNumber ?? "", 20);
+    const safeProvince    = sanitizeString(province ?? "", 80);
+    const safePostalCode  = (postalCode ?? "").replace(/\D/g, "").slice(0, 8);
+
     // 4. CHAMA n8n para criar subconta no Asaas
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15s — Asaas pode demorar
@@ -90,16 +136,16 @@ serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
-          name,
-          email,
-          cpfCnpj,
-          phone: phone ?? null,
-          mobilePhone: mobilePhone ?? null,
-          address: address ?? null,
-          addressNumber: addressNumber ?? null,
-          province: province ?? null,
-          postalCode: postalCode ?? null,
+          user_id:       user.id,
+          name:          safeName,
+          email:         safeEmail,
+          cpfCnpj:       safeCpfCnpj,
+          phone:         safePhone || null,
+          mobilePhone:   safeMobile || null,
+          address:       safeAddress || null,
+          addressNumber: safeAddrNumber || null,
+          province:      safeProvince || null,
+          postalCode:    safePostalCode || null,
         }),
         signal: controller.signal,
       });
@@ -134,17 +180,18 @@ serve(async (req) => {
     }
 
     // 6. SALVA no banco — access_token protegido (nunca retorna ao frontend)
+    // access_token nunca logado — regra PRD
     const { error: insertError } = await supabase
       .from("asaas_subaccounts")
       .insert({
         user_id: user.id,
         asaas_account_id,
         wallet_id,
-        access_token, // armazenado, jamais exposto em logs ou respostas
-        name,
-        email,
-        cpf_cnpj: cpfCnpj,
-        status: "active",
+        access_token,
+        name:      safeName,
+        email:     safeEmail,
+        cpf_cnpj:  safeCpfCnpj,
+        status:    "active",
       });
 
     if (insertError) {

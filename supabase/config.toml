@@ -1,5 +1,13 @@
 project_id = "prptyyuvwyusfucroitd"
 
+# criar-subconta: requer Bearer JWT do usuário — validado manualmente dentro da função
+[functions.criar-subconta]
+verify_jwt = false
+
+# asaas-webhook: chamado pelo n8n com x-n8n-key — sem JWT de usuário
+[functions.asaas-webhook]
+verify_jwt = false
+
 [functions.chat]
 verify_jwt = false
 

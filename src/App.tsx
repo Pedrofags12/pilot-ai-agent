@@ -26,6 +26,7 @@ import CancelarAssinatura from "./pages/admin/CancelarAssinatura";
 import Suporte from "./pages/admin/Suporte";
 import Financeiro from "./pages/admin/Financeiro";
 import Subcontas from "./pages/admin/Subcontas";
+import ClienteDetalhe from "./pages/admin/ClienteDetalhe";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="perfil" element={<Perfil />} />
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="clientes" element={<Clientes />} />
+            <Route path="clientes/:id" element={<ClienteDetalhe />} />
             <Route path="historico" element={<Historico />} />
             <Route path="financeiro" element={<Financeiro />} />
             <Route path="subcontas" element={<Subcontas />} />

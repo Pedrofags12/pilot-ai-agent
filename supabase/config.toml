@@ -1,5 +1,11 @@
 project_id = "prptyyuvwyusfucroitd"
 
+# send-auth-email: Supabase Auth Hook (Send Email)
+# Chamado diretamente pelo Supabase Auth — sem JWT de usuário
+# Registrar em: Authentication → Hooks → Send Email Hook
+[functions.send-auth-email]
+verify_jwt = false
+
 # criar-subconta: requer Bearer JWT do usuário — validado manualmente dentro da função
 [functions.criar-subconta]
 verify_jwt = false

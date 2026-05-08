@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Home,
   Target,
@@ -38,51 +39,27 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const [loading, setLoading] = useState(true);
+  // Guard de autenticação agora centralizado no ProtectedRoute (App.tsx)
+  // O Layout apenas consome o contexto para dados de exibição e logout
+  const { session, profile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [isAdmin, setIsAdmin]         = useState(false);
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
+  // Verifica role de admin uma única vez ao montar (não bloqueia a rota)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        navigate("/admin/login");
-        setLoading(false);
-        return;
-      }
-      // Check onboarding status
-      const checkProfile = supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", data.session.user.id)
-        .single();
+    if (!session?.user.id) return;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", session.user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => { if (data) setIsAdmin(true); });
+  }, [session?.user.id]);
 
-      // Check admin role from user_roles table
-      const checkRole = supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.session.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      Promise.all([checkProfile, checkRole]).then(([profileRes, roleRes]) => {
-        if (profileRes.data && !profileRes.data.onboarding_completed) {
-          navigate("/admin/onboarding");
-        }
-        if (roleRes.data) setIsAdmin(true);
-        setLoading(false);
-      });
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) navigate("/admin/login");
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Close sidebar on route change (mobile)
+  // Fecha sidebar ao mudar de rota (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
@@ -91,14 +68,6 @@ export default function AdminLayout() {
     await supabase.auth.signOut();
     navigate("/admin/login");
   };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-background">

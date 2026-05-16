@@ -120,7 +120,10 @@ export default function Onboarding() {
 
       await supabase
         .from("profiles")
-        .update({ onboarding_completed: true })
+        .update({
+          onboarding_completed: true,
+          account_status: "pending",   // aguarda aprovação manual da equipe
+        })
         .eq("id", userId);
 
       toast({ title: "Tudo pronto!", description: "Seu cadastro foi enviado para análise." });
